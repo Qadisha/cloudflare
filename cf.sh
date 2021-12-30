@@ -62,6 +62,24 @@ while [[ $# -gt 0 ]]; do
         create)
             echo 'Create We are working for: ' $domain
             check_domain $domain
+
+            curl -X POST "https://api.cloudflare.com/client/v4/zones" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"name":"example.com","account":{"id":"${CFZONEID}"},"jump_start":false,"type":"full"}' \
+                | jq -r 
+
+            sleep 5
+            get_zoneid $domain
+
+            curl -X PATCH "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/settings/ssl" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"value":"strict"}' \
+                | jq -r 
+
             exit 0
         ;;
         edit)
