@@ -67,7 +67,7 @@ while [[ $# -gt 0 ]]; do
                 -H "X-Auth-Email: ${CFEMAIL}" \
                 -H "X-Auth-Key: ${CFAPI}" \
                 -H "Content-Type: application/json" \
-                --data '{"name":"example.com","account":{"id":"${CFZONEID}"},"jump_start":false,"type":"full"}' \
+                --data '{"name":"'$domain'","account":{"id":"'${CFZONEID}'"},"jump_start":false,"type":"full"}' \
                 | jq -r 
 
             sleep 5
