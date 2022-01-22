@@ -118,6 +118,21 @@ while [[ $# -gt 0 ]]; do
                 --data '{"type":"TXT","name":"'$domain'","content":"'$SPF'","ttl":300,"proxied":false}'
         exit 0
         ;;
+        a)
+ get_zoneid $domain
+        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"A","name":"'$domain'","content":"'$A1'","ttl":300,"proxied":true}'
+        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"A","name":"www.'$domain'","content":"'$A1'","ttl":300,"proxied":true}'
+        exit 0
+        ;;
+
         *)
             echo 'Please provide the kind of add.'
             exit 0
