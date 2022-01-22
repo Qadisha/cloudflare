@@ -18,6 +18,20 @@ CNAME=''
 
 TODAY=$(date +"%Y%m%d")
 
+generate_post_data()
+{
+  cat <<EOF
+{
+  "type":"TXT",
+  "name":"${domain}",
+  "content":"${SPF}",
+  "ttl":300,
+  "proxied":false
+}
+EOF
+}
+
+
 check_domain () {
     domain="$1"
 
@@ -115,7 +129,7 @@ while [[ $# -gt 0 ]]; do
                 -H "X-Auth-Email: ${CFEMAIL}" \
                 -H "X-Auth-Key: ${CFAPI}" \
                 -H "Content-Type: application/json" \
-                --data '{"type":"TXT","name":"'$domain'","content":"'$SPF'","ttl":300,"proxied":false}'
+                --data "$(generate_post_data)"
         exit 0
         ;;
         a)
