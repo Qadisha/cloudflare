@@ -3,13 +3,18 @@ CFEMAIL=''
 CFAPI=''
 CFZONEID=''
 
-DB_USER='';
-DB_PASSWD='';
-DB_NAME='';
-DB_HOST='';
+DB_USER=''
+DB_PASSWD=''
+DB_NAME=''
+DB_HOST=''
 
 STORAGE_HOST=''
 STORAGE_USER=''
+
+MX=''
+A=''
+SPF=''
+CNAME=''
 
 TODAY=$(date +"%Y%m%d")
 
@@ -52,6 +57,7 @@ get_zoneid () {
 while [[ $# -gt 0 ]]; do
     key="$1"
     domain="$2"
+    flag="$3"
 
     if [ -z "$key" ]; then
         echo 'Please provide an argument followed by a domain name.'
@@ -82,9 +88,42 @@ while [[ $# -gt 0 ]]; do
 
             exit 0
         ;;
-        edit)
-            echo 'Edit We are working for: ' $domain
+        add)
+            echo 'Add We are working for: ' $domain
             check_domain $domain
+
+            case $flag in
+              mx)
+                get_zoneid $domain
+
+        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"MX","name":"'$domain'","content":"'$MX1'","ttl":300,"priority":0,"proxied":false}'
+
+        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+               -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+               --data '{"type":"MX","name":"'$domain'","content":"'$MX2'","ttl":300,"priority":0,"proxied":false}'
+         exit 0
+        ;;
+        spf)
+ get_zoneid $domain
+        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"TXT","name":"'$domain'","content":"'$SPF'","ttl":300,"proxied":false}'
+        exit 0
+        ;;
+        *)
+            echo 'Please provide the kind of add.'
+            exit 0
+        ;;
+
+        esac
             exit 0
         ;;
         delete)
@@ -162,7 +201,7 @@ echo "curl -s -X GET https://api.cloudflare.com/client/v4/zones?name=${2} -H \"X
             exit 0
         ;;
         *)
-            echo 'Please provide the argument: create, edit, list or info.'
+            echo 'Please provide the argument: create, add, edit, list or info.'
             exit 0
         ;;
     esac
