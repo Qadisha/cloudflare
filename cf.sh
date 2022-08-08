@@ -212,12 +212,6 @@ while [[ $# -gt 0 ]]; do
                 -H "Content-Type: application/json" \
             | jq -r '.result | .[0] | .status' )
 
-
-#### DEBUG ######
-echo "curl -s -X GET https://api.cloudflare.com/client/v4/zones?name=${2} -H \"X-Auth-Email: ${CFEMAIL}\" -H \"X-Auth-Key: ${CFAPI}\" -H \"Content-Type: application/json\" | jq -r"
-
-
-
             if [ -z "${QDDOMAINSTATUS}" ]; then
                 echo 'Something wrong with your input ' $domain ' according with cloudflare it is ' $QDDOMAINSTATUS
             elif [ "${QDDOMAINSTATUS}" = "active" ]; then
@@ -229,10 +223,52 @@ echo "curl -s -X GET https://api.cloudflare.com/client/v4/zones?name=${2} -H \"X
             fi
             exit 0
         ;;
+        search)
+            QDPAGECOUNT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?per_page=50" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+            | jq -r '.result_info | .total_pages ' )
+
+                for (( c=1; c<=$QDPAGECOUNT; c++ ))
+                do
+                        declare RESULT=($(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?per_page=50&page=$c" \
+                                -H "X-Auth-Email: ${CFEMAIL}" \
+                                -H "X-Auth-Key: ${CFAPI}" \
+                                -H "Content-Type: application/json"\
+                        | jq -r '.result | .[] | .name '))
+
+                        for domain in "${RESULT[@]}"
+                        do
+
+    QDDOMAINID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${domain}" \
+        -H "X-Auth-Email: ${CFEMAIL}" \
+        -H "X-Auth-Key: ${CFAPI}" \
+        -H "Content-Type: application/json" \
+    | jq -r '.result | .[0] | .id' )
+
+        curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records?type=A&content=164.132.75.19" \
+        -H "X-Auth-Email: ${CFEMAIL}" \
+        -H "X-Auth-Key: ${CFAPI}" \
+        -H "Content-Type: application/json" \
+    | jq -r '.result | .[0] | .name, .content'
+
+
+                        done
+                done
+
+
+        exit 0
+        ;;
         *)
             echo 'Please provide the argument: create, add, edit, list or info.'
             exit 0
         ;;
     esac
 done
+
+
+#### DEBUG ######
+# echo "curl -s -X GET https://api.cloudflare.com/client/v4/zones?name=${2} -H \"X-Auth-Email: ${CFEMAIL}\" -H \"X-Auth-Key: ${CFAPI}\" -H \"Content-Type: application/json\" | jq -r"
+
 
