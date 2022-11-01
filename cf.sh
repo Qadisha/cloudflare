@@ -67,11 +67,48 @@ get_zoneid () {
     fi
 }
 
+get_recordid() {    
+    domain="$1"
+    get_zoneid $domain
+
+
+    echo 'Get the id assigned to the record: ' $domain
+    QDDOMAINID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${domain}" \
+        -H "X-Auth-Email: ${CFEMAIL}" \
+        -H "X-Auth-Key: ${CFAPI}" \
+        -H "Content-Type: application/json" \
+    | jq -r '.result | .[0] | .id' )
+
+    if [ -z "${QDDOMAINID}" ]; then
+        echo 'Something wrong with your input ' $domain ' according with cloudflare its id is ' $QDDOMAINID
+        exit
+    else
+        echo $domain ' has the id: ' $QDDOMAINID
+    fi  
+
+    echo 'Get the id assigned to the record: ' $record
+    QDRECORDID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+            -H "X-Auth-Email: ${CFEMAIL}" \
+            -H "X-Auth-Key: ${CFAPI}" \
+            -H "Content-Type: application/json" \
+        | jq -r '.result | .[0] | .id')
+
+    if [ -z "${QDRECORDID}" ]; then
+        echo 'Something wrong with your input ' $record ' according with cloudflare its id is ' $QDRECORDID
+        exit
+    else
+        echo $record ' has the id: ' $QDRECORDID
+    fi    
+
+}
+
 
 while [[ $# -gt 0 ]]; do
     key="$1"
     domain="$2"
     flag="$3"
+    record="$4"
+    ipaddress="$5"
 
     if [ -z "$key" ]; then
         echo 'Please provide an argument followed by a domain name.'
@@ -100,61 +137,88 @@ while [[ $# -gt 0 ]]; do
                 --data '{"value":"strict"}' \
                 | jq -r 
 
-            exit 0
+        exit 0
         ;;
+
+        edit)
+            echo 'Edit We are working for: ' $domain
+            echo 'Updating the IP with ' $flag
+            check_domain $domain
+
+            curl -X POST "https://api.cloudflare.com/client/v4/zones" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"name":"'$domain'","account":{"id":"'${CFZONEID}'"},"jump_start":false,"type":"full"}' \
+                | jq -r 
+
+            sleep 5
+            get_zoneid $domain
+            get_recordid $record
+
+            curl -X PATCH "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records/$QDRECORDID" \
+                -H "X-Auth-Email: ${CFEMAIL}" \
+                -H "X-Auth-Key: ${CFAPI}" \
+                -H "Content-Type: application/json" \
+                --data '{"type":"A","name":"${RECORD}","content":"${IPADDRESS}","ttl":300,"proxied":true}'
+                | jq -r 
+            
+        exit 0
+        ;;
+
         add)
             echo 'Add We are working for: ' $domain
             check_domain $domain
 
             case $flag in
-              mx)
-                get_zoneid $domain
+                mx)
+                    get_zoneid $domain
 
-        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
-                -H "X-Auth-Email: ${CFEMAIL}" \
-                -H "X-Auth-Key: ${CFAPI}" \
-                -H "Content-Type: application/json" \
-                --data '{"type":"MX","name":"'$domain'","content":"'$MX1'","ttl":300,"priority":0,"proxied":false}'
+                    curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                            -H "X-Auth-Email: ${CFEMAIL}" \
+                            -H "X-Auth-Key: ${CFAPI}" \
+                            -H "Content-Type: application/json" \
+                            --data '{"type":"MX","name":"'$domain'","content":"'$MX1'","ttl":300,"priority":0,"proxied":false}'
 
-        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
-                -H "X-Auth-Email: ${CFEMAIL}" \
-               -H "X-Auth-Key: ${CFAPI}" \
-                -H "Content-Type: application/json" \
-               --data '{"type":"MX","name":"'$domain'","content":"'$MX2'","ttl":300,"priority":0,"proxied":false}'
-         exit 0
-        ;;
-        spf)
- get_zoneid $domain
-        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
-                -H "X-Auth-Email: ${CFEMAIL}" \
-                -H "X-Auth-Key: ${CFAPI}" \
-                -H "Content-Type: application/json" \
-                --data "$(generate_post_data)"
+                    curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                            -H "X-Auth-Email: ${CFEMAIL}" \
+                        -H "X-Auth-Key: ${CFAPI}" \
+                            -H "Content-Type: application/json" \
+                        --data '{"type":"MX","name":"'$domain'","content":"'$MX2'","ttl":300,"priority":0,"proxied":false}'
+                    exit 0
+                    ;;
+                spf)
+                    get_zoneid $domain
+                    curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                            -H "X-Auth-Email: ${CFEMAIL}" \
+                            -H "X-Auth-Key: ${CFAPI}" \
+                            -H "Content-Type: application/json" \
+                            --data "$(generate_post_data)"
+                    exit 0
+                    ;;
+                a)
+                    get_zoneid $domain
+                    curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                            -H "X-Auth-Email: ${CFEMAIL}" \
+                            -H "X-Auth-Key: ${CFAPI}" \
+                            -H "Content-Type: application/json" \
+                            --data '{"type":"A","name":"'$domain'","content":"'$A1'","ttl":300,"proxied":true}'
+                    curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
+                            -H "X-Auth-Email: ${CFEMAIL}" \
+                            -H "X-Auth-Key: ${CFAPI}" \
+                            -H "Content-Type: application/json" \
+                            --data '{"type":"A","name":"www.'$domain'","content":"'$A1'","ttl":300,"proxied":true}'
+                    exit 0
+                    ;;
+
+                *)
+                    echo 'Please provide the kind of add.'
+                    exit 0
+                    ;;
+            esac
         exit 0
         ;;
-        a)
- get_zoneid $domain
-        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
-                -H "X-Auth-Email: ${CFEMAIL}" \
-                -H "X-Auth-Key: ${CFAPI}" \
-                -H "Content-Type: application/json" \
-                --data '{"type":"A","name":"'$domain'","content":"'$A1'","ttl":300,"proxied":true}'
-        curl -X POST "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
-                -H "X-Auth-Email: ${CFEMAIL}" \
-                -H "X-Auth-Key: ${CFAPI}" \
-                -H "Content-Type: application/json" \
-                --data '{"type":"A","name":"www.'$domain'","content":"'$A1'","ttl":300,"proxied":true}'
-        exit 0
-        ;;
 
-        *)
-            echo 'Please provide the kind of add.'
-            exit 0
-        ;;
-
-        esac
-            exit 0
-        ;;
         delete)
             check_domain $domain
             get_zoneid $domain
@@ -184,6 +248,7 @@ while [[ $# -gt 0 ]]; do
 
             exit 0
         ;;
+
         list)
             check_domain $domain
             get_zoneid $domain
@@ -204,6 +269,7 @@ while [[ $# -gt 0 ]]; do
 
             exit 0
         ;;
+
         info)
             check_domain $domain
             QDDOMAINSTATUS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${2}" \
@@ -223,6 +289,7 @@ while [[ $# -gt 0 ]]; do
             fi
             exit 0
         ;;
+
         search)
             QDPAGECOUNT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?per_page=50" \
                 -H "X-Auth-Email: ${CFEMAIL}" \
@@ -241,25 +308,23 @@ while [[ $# -gt 0 ]]; do
                         for domain in "${RESULT[@]}"
                         do
 
-    QDDOMAINID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${domain}" \
-        -H "X-Auth-Email: ${CFEMAIL}" \
-        -H "X-Auth-Key: ${CFAPI}" \
-        -H "Content-Type: application/json" \
-    | jq -r '.result | .[0] | .id' )
+                            QDDOMAINID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${domain}" \
+                                -H "X-Auth-Email: ${CFEMAIL}" \
+                                -H "X-Auth-Key: ${CFAPI}" \
+                                -H "Content-Type: application/json" \
+                            | jq -r '.result | .[0] | .id' )
 
-        curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records?type=A&content=164.132.75.19" \
-        -H "X-Auth-Email: ${CFEMAIL}" \
-        -H "X-Auth-Key: ${CFAPI}" \
-        -H "Content-Type: application/json" \
-    | jq -r '.result | .[0] | .name, .content'
-
+                                curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records?type=A&content=164.132.75.19" \
+                                -H "X-Auth-Email: ${CFEMAIL}" \
+                                -H "X-Auth-Key: ${CFAPI}" \
+                                -H "Content-Type: application/json" \
+                            | jq -r '.result | .[0] | .name, .content'
 
                         done
                 done
-
-
         exit 0
         ;;
+
         *)
             echo 'Please provide the argument: create, add, edit, list or info.'
             exit 0
