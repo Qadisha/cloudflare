@@ -261,6 +261,44 @@ while [[ $# -gt 0 ]]; do
             exit 0
         ;;
 
+	listall)
+	
+	       curl --request GET --url https://api.cloudflare.com/client/v4/zones \
+                 -H "X-Auth-Email: ${CFEMAIL}" \
+                 -H "X-Auth-Key: ${CFAPI}" \
+                 -H "Content-Type: application/json" \
+	       | jq -r '.result  ' 
+		
+	      exit 0
+	;;
+
+	pagecache)
+
+            check_domain $domain
+            get_zoneid $domain
+
+               curl --request POST --url https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/pagerules \
+                 -H "X-Auth-Email: ${CFEMAIL}" \
+                 -H "X-Auth-Key: ${CFAPI}" \
+                 -H "Content-Type: application/json" \
+		 --data '{"actions": [{"id": "cache_level", "value": "cache_everything"}, {"id": "edge_cache_ttl", "value": 604800 }],
+  "priority": 1,
+  "status": "active",
+  "targets": [
+    {
+      "constraint": {
+        "operator": "matches",
+        "value": "*.'$domain'/*"
+      },
+      "target": "url"
+    }
+  ]
+}'
+
+              exit 0
+        ;;
+
+
         info)
             check_domain $domain
             QDDOMAINSTATUS=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${2}" \
@@ -317,7 +355,7 @@ while [[ $# -gt 0 ]]; do
         ;;
 
         *)
-            echo 'Please provide the argument: create, add, editrecord, createrecord, list or info.'
+            echo 'Please provide the argument: create, add, editrecord, createrecord, list, listall or info.'
             exit 0
         ;;
     esac
