@@ -1,20 +1,20 @@
 #!/bin/bash
-#CFEMAIL=''
-#CFAPI=''
-#CFZONEID=''
+CFEMAIL=''
+CFAPI=''
+CFZONEID=''
 
-#DB_USER=''
-#DB_PASSWD=''
-#DB_NAME=''
-#DB_HOST=''
+DB_USER=''
+DB_PASSWD=''
+DB_NAME=''
+DB_HOST=''
 
-#STORAGE_HOST=''
-#STORAGE_USER=''
+STORAGE_HOST=''
+STORAGE_USER=''
 
-#MX=''
-#A=''
-#SPF=''
-#CNAME=''
+MX=''
+A=''
+SPF=''
+CNAME=''
 
 TODAY=$(date +"%Y%m%d")
 
