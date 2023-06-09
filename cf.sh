@@ -1,20 +1,33 @@
 #!/bin/bash
-CFEMAIL=''
-CFAPI=''
-CFZONEID=''
+#CFEMAIL=''
+#CFAPI=''
+#CFZONEID=''
 
-DB_USER=''
-DB_PASSWD=''
-DB_NAME=''
-DB_HOST=''
+#DB_USER=''
+#DB_PASSWD=''
+#DB_NAME=''
+#DB_HOST=''
 
-STORAGE_HOST=''
-STORAGE_USER=''
+#STORAGE_HOST=''
+#STORAGE_USER=''
 
-MX=''
-A=''
-SPF=''
-CNAME=''
+#MX=''
+#A=''
+#SPF=''
+#CNAME=''
+
+CFEMAIL='info@mc-labs.net'
+CFAPI='abe9f70101a212062af8d6e6c50c98d6fda30'
+CFZONEID='2975ffd061b4277b0c907efa91826c09'
+STORAGE_HOST='u273216-sub2.your-storagebox.de'
+STORAGE_USER='u273216-sub2'
+
+DB_USER='qddnsscript'
+DB_PASSWD='y6JQil3yWn16KQ4D'
+DB_NAME='qdmail'
+DB_HOST='noc.qadisha.it'
+
+
 
 TODAY=$(date +"%Y%m%d")
 
@@ -67,14 +80,26 @@ get_zoneid () {
     fi
 }
 
-get_recordid() {    
-    echo 'Get the id assigned to the record: ' $domain
+get_recordid() {
+    echo 'Get the id assigned to the domain: ' $domain
     echo 'Get the id assigned to the record: ' $flag
+
+    if [ "$domain" = "$flag" ]; then
+        echo "This is main record @"
+        CFDOMAIN=${flag}
+        CFRECORDAONLY=' and .type=="A"'
+        echo $CFRECORDAONLY
+    else
+        echo "This is not main record @."
+        CFDOMAIN=${flag}.${domain}
+        CFRECORDAONLY=' '
+    fi
+
     QDRECORDID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records" \
             -H "X-Auth-Email: ${CFEMAIL}" \
             -H "X-Auth-Key: ${CFAPI}" \
             -H "Content-Type: application/json" \
-        | jq -r '.result | .[] | select(.name=="${flag}${domain}").id' )
+        | jq -r '.result | .[] | select(.name=="'${CFDOMAIN}'"'"${CFRECORDAONLY}"').id' )
 
     if [ -z "${QDRECORDID}" ]; then
         echo 'Something wrong with your input ' $flag ' according with cloudflare its id is ' $QDRECORDID
@@ -89,7 +114,8 @@ while [[ $# -gt 0 ]]; do
     key="$1"
     domain="$2"
     flag="$3"
-    record="$4"    
+    record="$4"
+    proxystatus="$5"
 
     if [ -z "$key" ]; then
         echo 'Please provide an argument followed by a domain name.'
@@ -120,9 +146,9 @@ while [[ $# -gt 0 ]]; do
 
         exit 0
         ;;
-
         editrecord)
-          echo 'Edit We are working for: ' $domain
+            echo 'This function expects 4 parameters: domain name, record name, IP address, Proxy Status (true/false) '
+            echo 'Edit We are working for: ' $domain
             echo 'Updating the record ' $flag
             echo 'Updating the IP with ' $record
 
@@ -130,13 +156,12 @@ while [[ $# -gt 0 ]]; do
             get_zoneid $domain
             get_recordid $flag
 
-            curl -X PUT "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records/${QDRECORDID}" \
+            curl --request PUT "https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/dns_records/${QDRECORDID}" \
                 -H "X-Auth-Email: ${CFEMAIL}" \
                 -H "X-Auth-Key: ${CFAPI}" \
                 -H "Content-Type: application/json" \
-                --data '{"type":"A","name":"'${flag}'","content":"'${record}'","ttl":300,"proxied":true}' \
+                --data '{"type":"A","name":"'${flag}'","content":"'${record}'","ttl":300,"proxied":'${proxystatus}'}' \
                 | jq -r
-
         exit 0
         ;;
         createrecord)
@@ -151,7 +176,7 @@ while [[ $# -gt 0 ]]; do
                 -H "X-Auth-Email: ${CFEMAIL}" \
                 -H "X-Auth-Key: ${CFAPI}" \
                 -H "Content-Type: application/json" \
-                --data '{"type":"A","name":"'${flag}'","content":"'${record}'","ttl":300,"proxied":true}' \
+                --data '{"type":"A","name":"'${flag}'","content":"'${record}'","ttl":300,"proxied":false}' \
                 | jq -r
 
         exit 0
@@ -297,6 +322,23 @@ while [[ $# -gt 0 ]]; do
 
               exit 0
         ;;
+
+
+        firewalllist)
+
+            check_domain $domain
+            get_zoneid $domain
+
+
+               curl --request GET --url https://api.cloudflare.com/client/v4/zones/${QDDOMAINID}/firewall/rules \
+                 -H "X-Auth-Email: ${CFEMAIL}" \
+                 -H "X-Auth-Key: ${CFAPI}" \
+                 -H "Content-Type: application/json" \
+               | jq -r '.result  '
+
+              exit 0
+        ;;
+
 
 
         info)
