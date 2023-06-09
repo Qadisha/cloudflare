@@ -16,19 +16,6 @@
 #SPF=''
 #CNAME=''
 
-CFEMAIL='info@mc-labs.net'
-CFAPI='abe9f70101a212062af8d6e6c50c98d6fda30'
-CFZONEID='2975ffd061b4277b0c907efa91826c09'
-STORAGE_HOST='u273216-sub2.your-storagebox.de'
-STORAGE_USER='u273216-sub2'
-
-DB_USER='qddnsscript'
-DB_PASSWD='y6JQil3yWn16KQ4D'
-DB_NAME='qdmail'
-DB_HOST='noc.qadisha.it'
-
-
-
 TODAY=$(date +"%Y%m%d")
 
 generate_post_data()
